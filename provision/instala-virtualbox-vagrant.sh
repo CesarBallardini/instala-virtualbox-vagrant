@@ -77,7 +77,11 @@ instalo_oracle_extension_pack() {
   VB_BASE_URL=http://download.virtualbox.org/virtualbox/${VB_MayorVersion}.${VB_MinorVersion}
   VB_EXTPACK_FILENAME=Oracle_VM_VirtualBox_Extension_Pack-${VB_MayorVersion}.${VB_MinorVersion}-${VB_EXTPACK_ReleaseNumber}.vbox-extpack
 
-  # verifico si no esta ya instalado
+  # verifico si esta instalado el Virtualbox
+  VBoxManage_PROG=$(whereis -b VBoxManage | cut -d: -f2 | cut -d\  -f2 )
+  [ -z "${VBoxManage_PROG}" ] && error "no esta instalado Virtualbox (VBoxManage), no se puede instalar el extension pack"
+
+  # verifico si no esta ya instalado el extension pack
   if [ 0 -eq `sudo VBoxManage list extpacks | awk '/Extension Packs:/ {print $3} '` ] ; then
     [ -r ${VB_EXTPACK_FILENAME} ] || wget -q ${VB_BASE_URL}/${VB_EXTPACK_FILENAME} ; ret=$?
     [ 0 -eq "$ret" ] || error "no se pudo descargar el extension pack: "${VB_BASE_URL}/${VB_EXTPACK_FILENAME}
@@ -111,7 +115,10 @@ instalo_vagrant() {
 }
 
 instalo_vagrant_proxyconf() {
-  vagrant plugin install vagrant-proxyconf
+
+  vagrant plugin list  | grep vagrant-proxyconf ; ret=$?
+  if [ 0 -ne "$ret" ] ; then
+    vagrant plugin install vagrant-proxyconf
 
   cat > ~/.vagrant.d/Vagrantfile << !EOF
 Vagrant.configure("2") do |config|
@@ -132,20 +139,42 @@ Vagrant.configure("2") do |config|
   end
 end
 !EOF
+  fi
 }
 
 instalo_vagrant_plugins() {
   mkdir -p ~/.vagrant.d/
 
   instalo_vagrant_proxyconf
-  vagrant plugin install vagrant-share
-  vagrant plugin install vagrant-vbguest
+
+  ## FIXME: ya forma parte del core de vagrant
+  #vagrant plugin list  | grep vagrant-share ; ret=$?
+  #[ 0 -eq "$ret" ] || vagrant plugin install vagrant-share
+
+  vagrant plugin list  | grep vagrant-vbguest; ret=$?
+  [ 0 -eq "$ret" ] || vagrant plugin install vagrant-vbguest
 }
 
 
 ##
+# si no estan los siguientes requisitos, puede fallar la instalacion
+#
+verifica_requisitos(){
+
+  # exportar HTTP_PROXY para que bundler funcione para instalar las gemas
+  [ -v http_proxy -a ! -v HTTP_PROXY ] && error "debe exportar HTTP_PROXY con el mismo valor de http_proxy, para que el bundler pueda instalar las gemas"
+
+  # asegurar que el env_keep de sudo existe o no se pasasn las variabels de proxy en sudo
+  sudo grep -e 'Defaults env_keep[\+]\{0,1\}="https_proxy http_proxy ftp_proxy no_proxy"' /etc/sudoers ; ret=$?
+  [ 0 -eq "$ret" ] || error '/etc/sudoers no conserva las variables de configuracion de proxy, poner antes de env_reset: ''Defaults env_keep="https_proxy http_proxy ftp_proxy no_proxy"'
+
+}
+
+##
 # main
 #
+verifica_requisitos
+
 instalo_virtualbox
 instalo_oracle_extension_pack
 
