@@ -3,7 +3,7 @@
 
 # buscar paquete apropiado a arquitectura y cpu en https://www.vagrantup.com/downloads.html 
 #
-VAG_Version=1.8.1
+VAG_Version=1.8.6
 
 
 # buscar paquete apropiado a arquitectura+cpu y que sea admitido por Vagrant en https://www.virtualbox.org/wiki/Downloads
@@ -51,8 +51,8 @@ oracle_pubkey() {
 instalo_virtualbox() {
 
   # verifico si no esta ya instalado
-  dpkg -l  virtualbox-${VB_MayorVersion} >/dev/null ; VB_INSTALADO=$?
-  if [ 0 -ne "${VB_INSTALADO}" ] ; then
+  VB_INSTALADO="$(/usr/bin/dpkg-query --show --showformat='${db:Status-Abbrev}\n' virtualbox-${VB_MayorVersion} | tr -d '[:blank:]' )"
+  if [ 'ii' != "${VB_INSTALADO}" ] ; then
     Oracle_pubkey_filename=`oracle_pubkey`
 
     # fuente de paquetes de Oracle para Virtualbox
@@ -102,8 +102,8 @@ instalo_vagrant() {
   VAG_PKG_NAME=vagrant_${VAG_Version}_${arch}.deb
 
   # verifico si no esta ya instalado
-  dpkg -l vagrant >/dev/null ; VAG_INSTALADO=$?
-  if [ 0 -ne "${VAG_INSTALADO}" ] ; then
+  VAG_INSTALADO="$(/usr/bin/dpkg-query --show --showformat='${db:Status-Abbrev}\n' vagrant | tr -d '[:blank:]' )"
+  if [ 'ii' != "${VAG_INSTALADO}" ] ; then
 
     [ -r ${VAG_PKG_NAME} ] || wget -q ${VAG_BASE_URL}/${VAG_PKG_NAME} ; ret=$?
     [ 0 -eq "$ret" ] || error "no se pudo descargar vagrant: "${VAG_BASE_URL}/${VAG_PKG_NAME}
